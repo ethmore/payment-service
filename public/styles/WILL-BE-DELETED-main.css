@@ -1,0 +1,77 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500&family=Raleway&family=Roboto:wght@300&display=swap');
+
+body {
+    background-color: rgb(240, 240, 240);
+    margin-top: 5%;
+    font-family: 'Montserrat', sans-serif;
+    font-size: large;
+}
+form {
+    max-width: 460px;
+    margin: auto;
+}
+
+.payment {
+    background-color: white;
+    padding: 3%;
+    border-radius: 20px;
+}
+
+.flex-column {
+    display: flex;
+    flex-direction: column;
+}
+
+.flex-row {
+    display: flex;
+}
+
+.space-btwn {
+    justify-content: space-between;
+}
+
+.space-even {
+    justify-content: space-evenly;
+}
+
+input {
+    font-family: 'Montserrat', sans-serif;
+    font-size: medium;
+    padding: 5px;
+}
+
+select {
+    font-family: 'Montserrat', sans-serif;
+    font-size: medium;
+    padding: 5px;
+}
+
+#cvv {
+    width: 50px;
+}
+
+form button {
+    background-image: url('/image/iyzicoileode.png');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+
+    height: 70px;
+    border: none;
+    background-color: transparent;
+    cursor: pointer;
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.phoneCountry {
+    border: solid 1px;
+    border-color: rgb(120, 120, 120);
+    padding: 4px;
+    border-radius: 4px;
+
+}
