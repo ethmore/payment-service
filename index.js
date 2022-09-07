@@ -22,18 +22,19 @@ var iyzipay = new Iyzipay({
     uri: 'https://sandbox-api.iyzipay.com'
 });
 
-// app.get('/', (req, res) => {
-//     res.sendFile(path.join(__dirname + '/public/views/main.html'));
-// });
-
-// app.get("/success", async (req, res) => {
-//     res.sendFile(path.join(__dirname + '/public/views/success.html'));
-// })
-
 var str = ""
+var Token
+var AddressId
+var CardLastFourDigits
+var PaymentID
+
 
 app.post("/buy", async (req, res) => {
     const { token, addressId, cardHolderName, cardNumber, cvv, month, year, threeds } = req.body;
+
+    CardLastFourDigits = cardNumber.slice(-4)
+    Token = token
+    AddressId = addressId
 
     const data = {
         token: token,
@@ -75,14 +76,28 @@ app.post("/buy", async (req, res) => {
         }
     }
 
+    const paymentBody = {
+        token: token,
+        buyerID: userData.userInfo.Id,
+        addressID: addressId,
+        totalPrice: cartData.cartInfo.TotalCartPrice 
+    }
+    const paymentResponse = await fetch("http://127.0.0.1:3002/createPayment", {
+        method: 'POST',
+        body: JSON.stringify(paymentBody),
+        headers: { "Content-Type": "application/json" }
+    })
+    const paymentData = await paymentResponse.json();
+    PaymentID = paymentData.paymentID
+
     const basePrice = parseFloat(cartData.cartInfo.TotalCartPrice)
     const iyzicoShare = 1.01
     const iyzicoFee = 0.2
     if (threeds === true) {
         var request = {
-            conversationId: '123456789', //DUMMY ID
+            conversationId: paymentData.paymentID,
             price: cartData.cartInfo.TotalCartPrice,
-            paidPrice: (basePrice + iyzicoFee) * iyzicoShare,
+            paidPrice: cartData.cartInfo.TotalCartPrice,
             currency: Iyzipay.CURRENCY.TRY,
             installment: '1',
             basketId: cartData.cartInfo.Id,
@@ -141,6 +156,7 @@ app.post("/buy", async (req, res) => {
                         headers: { "Content-Type": "application/json" }
                     })
                     const threedsContentResp = await threedsContent.json();
+
                     res.json({ html: str })
 
                 } else {
@@ -155,9 +171,9 @@ app.post("/buy", async (req, res) => {
         // console.log(name, surname, email, phoneNumber, cardHolderName, cardNumber, cvv, month, year, threeds)
 
         var request = {
-            conversationId: '123456789', //DUMMY ID
+            conversationId: paymentData.paymentID,
             price: cartData.cartInfo.TotalCartPrice,
-            paidPrice: (basePrice + iyzicoFee) * iyzicoShare,
+            paidPrice: cartData.cartInfo.TotalCartPrice,
             currency: Iyzipay.CURRENCY.TRY,
             installment: '1',
             basketId: cartData.cartInfo.Id,
@@ -199,11 +215,45 @@ app.post("/buy", async (req, res) => {
         };
 
         try {
-            iyzipay.payment.create(request, function (err, result) {
+            iyzipay.payment.create(request, async function (err, result) {
                 console.log(err, result);
                 if (result.status === "success") {
                     res.json({ message: "Payment Success" })
+
+                    const orderBody = {
+                        token: Token,
+                        addressID: AddressId,
+                        cardLastFourDigits: CardLastFourDigits
+                    }
+                    await fetch("http://127.0.0.1:3009/createOrder", {
+                        method: 'POST',
+                        body: JSON.stringify(orderBody),
+                        headers: { "Content-Type": "application/json" }
+                    })
+
+                    const updatePayment = {
+                        token: Token,
+                        paymentID: PaymentID,
+                        status: "success"
+                    }
+                    await fetch("http://127.0.0.1:3002/updatePaymentStatus", {
+                        method: 'POST',
+                        body: JSON.stringify(updatePayment),
+                        headers: { "Content-Type": "application/json" }
+                    })
+
                 } else {
+                    const updatePayment = {
+                        token: Token,
+                        paymentID: PaymentID,
+                        status: "success"
+                    }
+                    await fetch("http://127.0.0.1:3002/updatePaymentStatus", {
+                        method: 'POST',
+                        body: JSON.stringify(updatePayment),
+                        headers: { "Content-Type": "application/json" }
+                    })
+
                     res.json({ message: result.errorMessage })
                 }
             });
@@ -214,37 +264,6 @@ app.post("/buy", async (req, res) => {
 
 
 })
-
-// app.get('/3ds', (req, res) => {
-//     res.send(str)
-// })
-
-// app.post("/callback", async (req, res) => {
-//     console.log(req.body)
-//     if (req.body.status === "success") {
-//         iyzipay.threedsPayment.create({
-//             // conversationId: '123456789',
-//             // locale: Iyzipay.LOCALE.TR,
-//             paymentId: req.body.paymentId,
-//             conversationData: req.body.conversationData
-//         }, async function (err, result) {
-//             console.log(err, result);
-//             if (result.status === "success") {
-//                 str = ''
-//                 res.sendFile(path.join(__dirname + '/public/views/success.html'));
-
-//             } else {
-//                 str = ''
-//                 res.sendFile(path.join(__dirname + '/public/views/fail.html'));
-//             }
-//         });
-//     } else {
-//         console.log(req.errorMessage)
-//         // res.sendFile(path.join(__dirname + '/public/views/fail.html'));
-
-//     }
-
-// })
 
 app.post("/makeThreeDsPayment", async (req, res) => {
     console.log(req.body)
@@ -258,19 +277,67 @@ app.post("/makeThreeDsPayment", async (req, res) => {
             console.log(err, result);
             if (result.status === "success") {
                 str = ''
-                // res.sendFile(path.join(__dirname + '/public/views/success.html'));
                 res.json({ "message": "success" })
+
+                const body = {
+                    content: str
+                }
+                
+                    const orderBody = {
+                        token: Token,
+                        addressID: AddressId,
+                        cardLastFourDigits: CardLastFourDigits
+                    }
+                    await fetch("http://127.0.0.1:3009/createOrder", {
+                        method: 'POST',
+                        body: JSON.stringify(orderBody),
+                        headers: { "Content-Type": "application/json" }
+                    })
+
+                    const updatePayment = {
+                        token: Token,
+                        paymentID: PaymentID,
+                        status: "success"
+                    }
+                    await fetch("http://127.0.0.1:3002/updatePaymentStatus", {
+                        method: 'POST',
+                        body: JSON.stringify(updatePayment),
+                        headers: { "Content-Type": "application/json" }
+                    })
+
             } else {
                 str = ''
-                // res.sendFile(path.join(__dirname + '/public/views/fail.html'));
+
+                const updatePayment = {
+                    token: Token,
+                    paymentID: PaymentID,
+                    status: "fail"
+                }
+                await fetch("http://127.0.0.1:3002/updatePaymentStatus", {
+                    method: 'POST',
+                    body: JSON.stringify(updatePayment),
+                    headers: { "Content-Type": "application/json" }
+                })
+
                 res.json({ "message": "fail" })
 
             }
         });
     } else {
         console.log(req.errorMessage)
+        
+        const updatePayment = {
+            token: Token,
+            paymentID: PaymentID,
+            status: "fail"
+        }
+        await fetch("http://127.0.0.1:3002/updatePaymentStatus", {
+            method: 'POST',
+            body: JSON.stringify(updatePayment),
+            headers: { "Content-Type": "application/json" }
+        })
+
         str = ''
-        // res.sendFile(path.join(__dirname + '/public/views/fail.html'));
         res.json({ "message": "fail" })
     }
 })
