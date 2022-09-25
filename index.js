@@ -29,6 +29,10 @@ var CardLastFourDigits
 var PaymentID
 
 
+app.get("/test", async (req, res) => {
+    res.json({ "message": "OK" })
+})
+
 app.post("/buy", async (req, res) => {
     const { token, addressId, cardHolderName, cardNumber, cvv, month, year, threeds } = req.body;
 
